@@ -1,6 +1,7 @@
 #include <fstream>
 #include <vector>
 #include <cstring>
+#include "LogEntry.hpp"
 
 namespace Logger
 {
@@ -48,6 +49,11 @@ namespace Logger
                 return false;
 
             return Write((const char*)data.data(), data.size());
+        }
+
+        void Write(const LogEntry& entry)
+        {
+            _file << entry;
         }
 
         void Flush() { _file.flush(); }

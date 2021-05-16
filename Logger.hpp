@@ -9,18 +9,6 @@
 
 namespace Logger
 {
-    struct LogEntry
-    {
-        LogEntry() : entryId(0), length(0) { }
-        LogEntry(uint32_t entryId, uint32_t length, const std::vector<uint8_t>& data) :
-            entryId(entryId), length(length), data(data)
-        { }
-
-        uint32_t entryId;
-        uint32_t length;
-        std::vector<uint8_t> data;
-    };
-
     struct LogSettings
     {
         std::string logFileName;
@@ -39,10 +27,11 @@ namespace Logger
         virtual uint32_t GetPosition() const override;
         virtual void Truncate(uint32_t position) override;
         virtual void Replay(uint32_t position, std::function<void(std::vector<uint8_t>)> callback) const override;
-
+    private:
         void WriterThread();
         void Push(const LogEntry& entry);
         LogEntry Pop();
+        void ReadFile(const std::string& path, uint32_t beginOffset, std::function<void(std::vector<uint8_t>)> callback) const;
 
     private:
         std::deque<LogEntry> _logQueue;
@@ -51,6 +40,7 @@ namespace Logger
         std::thread _writerThread;
         std::atomic<bool> _isShutdown;
         FileWriter _fileWriter;
+        mutable std::mutex _fileLock;
         LogSettings _settings;
         std::atomic<uint32_t> _currentEntryId;
         std::atomic<uint32_t> _currentBegPosition;

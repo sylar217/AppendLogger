@@ -10,7 +10,14 @@ int main()
     std::unique_ptr<Logger::FileLogger> logger(std::make_unique<Logger::FileLogger>());
     if (logger && logger->Initialize(settings))
     {
-        std::cout << "Hello world" << std::endl;
+        std::string data = "Hello world";
+        std::vector<uint8_t> vec(data.begin(), data.end());
+        uint32_t pos = logger->Append(vec);
+        logger->Replay(pos, [](std::vector<uint8_t> content)
+        {
+            std::string str(content.begin(), content.end());
+            std::cout << str << std::endl;
+        });
     }
 
     return 0;
