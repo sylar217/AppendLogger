@@ -6,7 +6,11 @@
 
 namespace Logger
 {
-    FileLogger::FileLogger(): _messageEvent(), _writerThread(), _isShutdown(false) { }
+    FileLogger::FileLogger() :
+         _messageEvent(), _writerThread(),
+         _isShutdown(false), _currentEntryId(0),
+         _currentBegPosition(0)
+    { }
 
     bool FileLogger::Initialize(LogSettings settings)
     {
@@ -32,6 +36,10 @@ namespace Logger
         {
             if (!_fileWriter.Open(_settings.logFilePath +_settings.logFileName))
                 return false;
+
+            // Initialize entry ID and file begin position
+            _currentEntryId.store(1);
+            _currentBegPosition.store(0);
 
             return true;
         }
@@ -93,23 +101,43 @@ namespace Logger
         }
     }
 
-    uint64_t FileLogger::Append(std::vector<uint8_t> data)
+    uint32_t FileLogger::Append(std::vector<uint8_t> data)
     {
-        return 0;
+        if (data.empty())
+            return 0;
+
+        LogEntry entry;
+        {
+            std::lock_guard<std::mutex> lg(_currentStateLock);
+            uint32_t prevEntry = std::atomic_fetch_add(&_currentEntryId, 1);
+
+            uint32_t fileOffset = 4 + 4 + (uint32_t)data.size();    // entryId + length + data size
+            uint32_t prevBegPosition = std::atomic_fetch_add(&_currentBegPosition, fileOffset);
+            _entryIdToFileBegPosition.insert(std::make_pair(prevEntry, prevBegPosition));
+
+            entry = { prevEntry, data.size(), data };
+        }
+
+        Push(entry);
+        return entry.entryId;
     }
 
-    uint64_t FileLogger::GetPosition() const
+    uint32_t FileLogger::GetPosition() const
     {
-        return 0;
+        return _currentEntryId.load() - 1;
     }
 
-    void FileLogger::FileLogger::Truncate(uint64_t position)
+    void FileLogger::FileLogger::Truncate(uint32_t position)
     {
 
     }
 
-    void FileLogger::Replay(uint64_t position, std::function<void(std::vector<uint8_t>)> callback) const
+    void FileLogger::Replay(uint32_t position, std::function<void(std::vector<uint8_t>)> callback) const
     {
+        auto itr = _entryIdToFileBegPosition.find(position);
+        if (itr == _entryIdToFileBegPosition.end())
+            return;
 
+        uint32_t begPosition = itr->second;
     }
 }
