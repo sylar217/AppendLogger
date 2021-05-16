@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <errno.h>
+#include <thread>
 #include "Logger.hpp"
 
 namespace Logger
@@ -40,6 +41,7 @@ namespace Logger
             // Initialize entry ID and file begin position
             _currentEntryId.store(1);
             _currentBegPosition.store(0);
+            _writerThread = std::thread(&FileLogger::WriterThread, this);
 
             return true;
         }
